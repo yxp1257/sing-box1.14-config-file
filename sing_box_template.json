@@ -1,0 +1,289 @@
+{
+  "log": {
+    "disabled": false,
+    "level": "info",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "tls",
+        "tag": "dns_proxy",
+        "server": "1.1.1.1",
+        "domain_resolver": "dns_resolver"
+      },
+      {
+        "type": "h3",
+        "tag": "dns_direct",
+        "server": "dns.alidns.com",
+        "domain_resolver": "dns_resolver"
+      },
+      {
+        "type": "fakeip",
+        "tag": "dns_fakeip",
+        "inet4_range": "198.18.0.0/15"
+      },
+      {
+        "type": "udp",
+        "tag": "dns_resolver",
+        "server": "223.5.5.5"
+      }
+    ],
+    "rules": [
+      {
+        "outbound": [
+          "any"
+        ],
+        "server": "dns_resolver"
+      },
+      {
+        "rule_set": "geosite-category-ads-all",
+        "action": "predefined",
+        "rcode": "NOERROR"
+      },
+      {
+        "rule_set": "geosite-geolocation-!cn",
+        "query_type": [
+          "A",
+          "AAAA"
+        ],
+        "server": "dns_fakeip"
+      },
+      {
+        "rule_set": "geosite-geolocation-!cn",
+        "server": "dns_proxy"
+      }
+    ],
+    "final": "dns_direct"
+  },
+  "ntp": {
+    "enabled": true,
+    "server": "time.apple.com",
+    "server_port": 123,
+    "interval": "30m"
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "0.0.0.0",
+      "listen_port": 2080
+    },
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "auto_route": true,
+      "strict_route": true,
+      "stack": "mixed",
+      "address": [
+        "172.19.0.1/30"
+      ]
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "DIRECT"
+    },
+    {
+      "type": "block",
+      "tag": "REJECT"
+    },
+    {
+      "type": "selector",
+      "tag": "🚀 节点选择",
+      "outbounds": [
+        "♻️ 自动选择",
+        "🔯 故障转移",
+        "🔮 负载均衡",
+        "DIRECT"
+      ]
+    },
+    {
+      "type": "urltest",
+      "tag": "♻️ 自动选择",
+      "outbounds": [],
+      "url": "http://www.gstatic.com/generate_204",
+      "interval": "5m",
+      "tolerance": 50
+    },
+    {
+      "type": "urltest",
+      "tag": "🔯 故障转移",
+      "outbounds": []
+    },
+    {
+      "type": "urltest",
+      "tag": "🔮 负载均衡",
+      "outbounds": []
+    },
+    {
+      "type": "selector",
+      "tag": "🎯 全球直连",
+      "outbounds": [
+        "DIRECT",
+        "🚀 节点选择",
+        "♻️ 自动选择"
+      ]
+    },
+    {
+      "type": "selector",
+      "tag": "🛑 全球拦截",
+      "outbounds": [
+        "REJECT",
+        "DIRECT"
+      ]
+    },
+    {
+      "type": "selector",
+      "tag": "🐟 漏网之鱼",
+      "outbounds": [
+        "🚀 节点选择",
+        "🎯 全球直连",
+        "♻️ 自动选择",
+        "🔯 故障转移",
+        "🔮 负载均衡"
+      ]
+    },
+    {
+      "type": "selector",
+      "tag": "GLOBAL",
+      "outbounds": [
+        "DIRECT",
+        "🚀 节点选择"
+      ]
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "inbound": "tun-in",
+        "action": "sniff"
+      },
+      {
+        "clash_mode": "Global",
+        "outbound": "GLOBAL"
+      },
+      {
+        "clash_mode": "Direct",
+        "outbound": "DIRECT"
+      },
+      {
+        "domain_suffix": [
+          "acl4.ssr",
+          "ip6-localhost",
+          "ip6-loopback",
+          "internal",
+          "lan",
+          "local",
+          "localhost",
+          "hiwifi.com",
+          "leike.cc",
+          "miwifi.com",
+          "my.router",
+          "p.to",
+          "peiluyou.com",
+          "phicomm.me",
+          "router.ctc",
+          "routerlogin.com",
+          "tendawifi.com",
+          "zte.home",
+          "tplogin.cn",
+          "wifi.cmcc"
+        ],
+        "ip_cidr": [
+          "0.0.0.0/8",
+          "10.0.0.0/8",
+          "100.64.0.0/10",
+          "127.0.0.0/8",
+          "169.254.0.0/16",
+          "172.16.0.0/12",
+          "192.168.0.0/16",
+          "198.18.0.0/16",
+          "224.0.0.0/4"
+        ],
+        "domain": [
+          "instant.arubanetworks.com",
+          "setmeup.arubanetworks.com",
+          "router.asus.com",
+          "www.asusrouter.com"
+        ],
+        "outbound": "🎯 全球直连"
+      },
+      {
+        "domain_suffix": [
+          "ol.epicgames.com",
+          "dizhensubao.getui.com",
+          "googletraveladservices.com",
+          "tracking-protection.cdn.mozilla.net",
+          "koodomobile.com",
+          "koodomobile.ca",
+          "synology.me",
+          "diskstation.me",
+          "i234.me",
+          "myds.me",
+          "dscloud.biz",
+          "dscloud.me",
+          "dscloud.mobi",
+          "dsmynas.com",
+          "dsmynas.net",
+          "dsmynas.org",
+          "familyds.com",
+          "familyds.net",
+          "familyds.org"
+        ],
+        "domain": [
+          "dl.google.com",
+          "origin-a.akamaihd.net",
+          "fairplay.l.qq.com",
+          "livew.l.qq.com",
+          "vd.l.qq.com",
+          "errlog.umeng.com",
+          "msg.umeng.com",
+          "msg.umengcloud.com",
+          "tracking.miui.com",
+          "app.adjust.com",
+          "bdtj.tagtic.cn",
+          "rewards.hypixel.net"
+        ],
+        "outbound": "🎯 全球直连"
+      },
+      {
+        "outbound": "🎯 全球直连",
+        "rule_set": "geoip-cn"
+      }
+    ],
+    "auto_detect_interface": true,
+    "final": "🐟 漏网之鱼",
+    "rule_set": [
+      {
+        "tag": "geosite-category-ads-all",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs"
+      },
+      {
+        "tag": "geosite-geolocation-!cn",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-!cn.srs"
+      },
+      {
+        "tag": "geoip-cn",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
+      }
+    ]
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "store_fakeip": true
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "external_ui": "dashboard"
+    }
+  }
+}
