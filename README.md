@@ -8,6 +8,7 @@ sing-box1.14的配置文件使用，下载两个文件，用python3直接运行�
 
 只加单条节点链接：
 python3 merge_subscription.py --link "vless://xxxx@server:443?...#我的节点"
+
 也可以一次传多个（多次写 --url 或 --link）
 python3 merge_subscription.py \
   --url "https://sminoy-production.up.railway.app/sub" \
