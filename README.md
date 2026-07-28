@@ -11,6 +11,6 @@ python3 merge_subscription.py --link "vless://xxxx@server:443?...#我的节点"
 
 也可以一次传多个（多次写 --url 或 --link）
 python3 merge_subscription.py \
-  --url "https://sminoy-production.up.railway.app/sub" \
+  --url "https://smipro.up.app/sub" \
   --link "trojan://password@server2:443?...#备用节点" \
   --link "vless://uuid@server3:443?...#另一个节点"
