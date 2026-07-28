@@ -208,11 +208,12 @@ def scheme_of(line: str) -> str:
     return line.split("://", 1)[0].lower()
 
 
-def parse_nodes(text: str):
-    """Parse subscription text into a list of (protocol, tag, outbound_dict),
-    keeping only one protocol per unique tag (preference order above)."""
+def parse_nodes(lines):
+    """Parse an iterable of raw lines (vless/vmess/trojan/hysteria2 URIs) into
+    a list of (protocol, tag, outbound_dict, original_uri), keeping only one
+    protocol per unique tag (preference order above)."""
     by_tag = {}
-    for line in text.splitlines():
+    for line in lines:
         line = line.strip()
         if "://" not in line:
             continue
@@ -227,16 +228,16 @@ def parse_nodes(text: str):
             continue
 
         if tag not in by_tag:
-            by_tag[tag] = (scheme, ob)
+            by_tag[tag] = (scheme, ob, line)
         else:
-            existing_scheme, _ = by_tag[tag]
+            existing_scheme, _, _ = by_tag[tag]
             if PROTOCOL_PREFERENCE.index(scheme) < PROTOCOL_PREFERENCE.index(existing_scheme):
-                by_tag[tag] = (scheme, ob)
+                by_tag[tag] = (scheme, ob, line)
 
     # de-dupe tag collisions between genuinely different servers
     seen_tags = {}
     result = []
-    for tag, (scheme, ob) in by_tag.items():
+    for tag, (scheme, ob, line) in by_tag.items():
         final_tag = tag
         n = 2
         while final_tag in seen_tags:
@@ -244,7 +245,7 @@ def parse_nodes(text: str):
             n += 1
         seen_tags[final_tag] = True
         ob["tag"] = final_tag
-        result.append(ob)
+        result.append((ob, line))
     return result
 
 
@@ -295,26 +296,57 @@ def build_config(template_path: str, nodes: list) -> dict:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", required=True, help="Subscription URL")
+    ap.add_argument("--url", action="append", default=[], help="Subscription URL (repeatable)")
+    ap.add_argument("--link", action="append", default=[],
+                     help="A single node URI (vless://, vmess://, trojan://, hysteria2://) - repeatable, no fetch needed")
     ap.add_argument("--template", default="sing_box_template.json")
     ap.add_argument("--output", default="config.json")
+    ap.add_argument("--links-output", default="nodes_links.txt",
+                     help="Plain-text file with one deduped node link per line")
+    ap.add_argument("--sub-output", default="merged_subscription.txt",
+                     help="Base64-encoded blob of the deduped links - valid subscription content, "
+                          "host it anywhere and it works as a new subscription URL")
     args = ap.parse_args()
 
-    print(f"Fetching {args.url} ...")
-    text = fetch_subscription(args.url)
-    nodes = parse_nodes(text)
-    if not nodes:
-        print("error: no nodes parsed from subscription - check the URL/format", file=sys.stderr)
+    if not args.url and not args.link:
+        print("error: pass at least one --url or --link", file=sys.stderr)
         sys.exit(1)
+
+    all_lines = []
+    for url in args.url:
+        print(f"Fetching {url} ...")
+        all_lines.extend(fetch_subscription(url).splitlines())
+    all_lines.extend(args.link)
+
+    parsed = parse_nodes(all_lines)
+    if not parsed:
+        print("error: no nodes parsed - check the URL(s)/link(s)/format", file=sys.stderr)
+        sys.exit(1)
+
+    nodes = [ob for ob, _uri in parsed]
+    uris = [uri for _ob, uri in parsed]
+
     print(f"Parsed {len(nodes)} node(s):")
     for n in nodes:
         print(f"  - [{n['type']}] {n['tag']} -> {n['server']}:{n['server_port']}")
 
     config = build_config(args.template, nodes)
-
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
     print(f"Wrote {args.output}")
+
+    # Also emit the deduped node list as a fresh link file + a base64 blob
+    # that is itself valid subscription content (host it anywhere and it
+    # works like any other subscription URL).
+    links_text = "\n".join(uris)
+    with open(args.links_output, "w", encoding="utf-8") as f:
+        f.write(links_text + "\n")
+    print(f"Wrote {args.links_output} ({len(uris)} link(s))")
+
+    encoded = base64.b64encode(links_text.encode("utf-8")).decode("ascii")
+    with open(args.sub_output, "w", encoding="utf-8") as f:
+        f.write(encoded)
+    print(f"Wrote {args.sub_output} (base64 subscription content)")
 
 
 if __name__ == "__main__":
